@@ -1,0 +1,61 @@
+---
+title: "hw5"
+author: "Klimenko Sveta"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### 1.1
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(ca)
+library(ggrepel)
+
+data = read.csv('https://raw.githubusercontent.com/agricolamz/2018_data_analysis_for_linguists/master/data/students/s-klimenko/hw5_CA_MCA/hw5_chairs.csv')
+
+MCA <- MASS::mca(data[, -c(1:3)])
+
+chairs <- cbind(data, MCA$rs)
+variables <- as_data_frame(MCA$cs)
+variables$var_names <- rownames(MCA$cs)
+
+chairs %>% 
+  ggplot(aes(`1`, `2`))+
+  geom_point(aes(color = Category))+
+  stat_ellipse(aes(color = Category))+
+  geom_text(data = variables, aes(`1`, `2`, label = var_names))+
+  theme_bw()+
+  scale_x_continuous(limits = c(-0.015, 0.02))
+```
+### 1.2
+```
+Как видно из графика, категории Stuhl и Sessel проактически не пересекаются.
+Судя по отображаемым на графике признакам, Stuhl и Sessel соответствут русским "стул" и "кресло": Sessel делается из мягких материалов - кожи и ткани, у него есть ручки и высокая спинка и оно может раскладываться в кровать и использоваться для отдыха, в то время как Sessel делается из твердых материалов - стали, дерева и пластика, не имеет ручек, к нему можно добавить столик и он может использоваться на улице и для еды.
+```
+### 2.1
+```{r}
+data2 = read.csv('https://raw.githubusercontent.com/agricolamz/2018_data_analysis_for_linguists/master/data/students/s-klimenko/hw5_CA_MCA/hw5_colreg.csv')
+rownames(data2) <- data2$colors
+ca <- ca(data2[,-c(5)])
+colors_col <- data.frame(ca$colcoord)
+colors_col$rows <- rownames(ca$colcoord)
+
+colors_row <- data.frame(ca$rowcoord)
+colors_row$rows <- rownames(ca$rowcoord)
+
+colors_col %>% 
+  ggplot(aes(Dim1, Dim2, label = rows))+
+  geom_text(color = "blue")+
+  geom_text(data = colors_row, color = "red")+
+  theme_bw()+
+  labs(x = "Dim1 (42.1%)",
+       y = "Dim2 (32.6%)")
+```
+
+### 2.2
+```
+Как видно из графика, больше всего цветов встречается в художественной литературе, в академической - практически нет (исключая, может быть, белый). Это связано с тем, что академический текст - формальный, а в художественной литературе присутствует очень много описаний. В прессе чаще всего используются зеленый, оранжевый и красный (вероятно, потому что входят в устойчивые сочетаний типа "green light", "green card", "orange revolution", которые часто можно встретить в прессе). ```
