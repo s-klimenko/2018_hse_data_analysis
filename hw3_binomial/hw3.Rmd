@@ -1,0 +1,114 @@
+---
+title: "hw_2"
+author: "Ekaterina Uetova"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, comment = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(mosaic)
+library(ggplot2)
+```
+
+### 1.1
+ѕриведите результаты биномиального теста.
+
+```{r}
+data <- read_csv("https://raw.githubusercontent.com/agricolamz/2018_data_analysis_for_linguists/master/data/students/s-klimenko/hw3_binomial/hw3_binomial.csv")
+k <- data$k
+n <- data$n
+prior <- data$prior
+binomial_test <- binom.test(k, n, prior)
+binomial_test
+```
+
+### 1.2
+ѕриведите результаты симул€ции, использу€ set.seed(42).
+
+```{r}
+set.seed(42)
+do(1000)*
+  sum(sample(x = 1:0, 
+             size = n, 
+             prob = c(prior, 1 - prior), 
+             replace = TRUE)) ->
+  simulations
+simulations %>% 
+  mutate(greater = sum >= k) %>% 
+  count(greater)
+
+simulations %>% 
+  ggplot(aes(sum))+
+  geom_density(fill = "lightblue")+
+  geom_vline(xintercept = k, linetype = 2)+
+  theme_bw()+
+  labs(title = "–аспределение 1000 симул€ций с параметрами n = 183, p = 0.374")
+```
+
+### 1.3
+ѕриведите среднее апостериорного распределени€, использу€ prior как средние априорного распределени€, а n как количество элементов дл€ вычислени€ апостериорного распределени€.
+
+```{r}
+alpha_prior <- prior*n
+beta_prior <- (1-prior)*n
+
+alpha_data <- k
+beta_data <- n-k
+
+alpha_post <- alpha_prior + alpha_data
+beta_post <- beta_prior + beta_data
+
+x <- seq(0, 1, length = 100)
+data_frame(p = rep(x, 3),
+           density = c(dbeta(x, alpha_prior, beta_prior),
+                       dbeta(x, alpha_data, beta_data),
+                       dbeta(x, alpha_post, beta_post)),
+           type = rep(c("prior", "likelihood", "posterior"), each = 100))%>% 
+  ggplot(aes(x = p, y = density, color = type))+
+  geom_line()+
+  theme_bw()
+```
+
+```{r}
+alpha_post/(alpha_post+beta_post)
+```
+
+### 1.4
+ѕриведите среднее апостериорного распределени€, использу€ неинформативное априорное распределение с ??=1 и ??=1.
+
+```{r}
+alpha_prior <- 1
+beta_prior <- 1
+
+alpha_data <- k
+beta_data <- n-k
+
+alpha_post <- alpha_prior + alpha_data
+beta_post <- beta_prior + beta_data
+
+x <- seq(0, 1, length = 100)
+data_frame(p = rep(x, 3),
+           density = c(dbeta(x, alpha_prior, beta_prior),
+                       dbeta(x, alpha_data, beta_data),
+                       dbeta(x, alpha_post, beta_post)),
+           type = rep(c("prior", "likelihood", "posterior"), each = 100))%>% 
+  ggplot(aes(x = p, y = density, color = type))+
+  geom_line()+
+  theme_bw()
+```
+
+```{r}
+alpha_post/(alpha_post+beta_post)
+```
+
+### 1.5
+ѕредставим, что ¬ы пишите статью, напишите короткий абзац, который бы обобщал результаты, полученные в предыдущих задани€х. Ќе забывайте приводить результаты статистических тестов.
+
+P-value при биноминальном тесте - 0.1095. ѕоскольку это больше 0.05, а априорна€ веро€тность (0.374) лежит в доверительном интервале (0.2502684 - 0.3896573) мы принимаем нулевую гипотезу. 
+ роме того, мы вычислили среднее информированного и неинформированного (равного 1) априорного распределени€. ѕервое составл€ет 0.346, второе -- 0.319, то есть разница между ними составл€ет 0,027, что не €вл€етс€ очень значимой разницей.
