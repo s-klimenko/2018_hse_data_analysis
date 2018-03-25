@@ -1,0 +1,126 @@
+---
+title: "HW4"
+author: "Klimenko Sveta"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(bootstrap)
+library(mosaic)
+library(binom)
+
+```
+
+### 1.1
+Посчитайте среднее употребление слова “сэр” по каждой главе, а потом посчитайте grand mean. Ответ выведите в формате тиббл.
+
+```{r}
+data <- read_csv("https://raw.githubusercontent.com/agricolamz/2018_data_analysis_for_linguists/master/data/students/s-klimenko/hw4_binomial_ci/hw4_wodehouse.csv")
+data <- as_tibble(data)
+
+data %>%
+  filter(word == "сэр") %>%
+  count(chapter) -> sir_chapters
+
+data %>%
+  distinct(chapter, word) %>% 
+  count(chapter) -> words_chapters
+
+sir_chapters$n_words <- words_chapters$n
+
+sir_chapters %>%
+  mutate(average = n/n_words) %>%
+  arrange(desc(average)) ->
+  sir_chapters
+as_tibble(sir_chapters)
+
+sir_chapters %>%
+  summarize(g_mean = mean(average)) ->
+  grand_mean
+as_tibble(grand_mean)
+```
+
+### 1.2
+
+Посчитайте бутстрэпом доверительный интервал для средней доли слова “сэр” в главах романа и выведите его размер в формате тиббл.
+```{r}
+set.seed(42)
+
+boots <- bootstrap(sir_chapters$average, nboot = 10000, theta = mean)$thetastar
+boots <- data_frame(means = boots) 
+
+boots %>%
+  summarise(mean = mean(means),
+            q1 = quantile(means, 0.025),
+            q2 = quantile(means, 0.975))->
+  stats
+stats <- as_tibble(stats)
+stats
+
+
+```
+
+### 1.3
+
+Посчитайте биномиальный доверительный интервал употребления слова “сэр” в каждой главе и выведите главу с максимальным из интервалов в формате тиббл.
+
+```{r}
+sir_chapters %>%
+  group_by(chapter) %>%
+  mutate(interv = binom.test(x = n, n = n_words, ci.method = "Clopper-Pearson")$conf.int[2] - 
+           binom.test(x = n, n = n_words, ci.method = "Clopper-Pearson")$conf.int[1]) ->
+  sir_chapters
+as_tibble(sir_chapters[which.max(sir_chapters$interv), 1])
+```
+
+### 1.4
+
+Посчитайте байесовский биномиальный доверительный интервал употребления слова “сэр” в каждой главе и выведите главу с максимальным из интервалов в формате тиббл.
+
+```{r}
+mu <- mean(sir_chapters$average)
+var <- var(sir_chapters$average)
+alpha0 <- ((1 - mu) / var - 1 / mu) * mu ^ 2
+beta0 <- alpha0 * (1 / mu - 1)
+
+sir_chapters %>%
+  mutate(alpha_post = n + alpha0,
+         beta_post = n_words - n + beta0,
+         interv = qbeta(.975, alpha_post, beta_post) - qbeta(.025, alpha_post, beta_post)) ->
+  posterior
+posterior
+
+as_tibble(posterior[which.max(posterior$interv), 1])
+```
+
+
+### 1.5
+
+Посчитайте биномиальный доверительный интервал употребления слова “сэр” в каждой главе и выведите главу с минимальным из интервалов в формате тиббл.
+
+```{r}
+sir_chapters
+as_tibble(sir_chapters[which.min(sir_chapters$interv), 1])
+```
+
+
+### 1.6
+
+Посчитайте байесовский биномиальный доверительный интервал употребления слова “сэр” в каждой главе и выведите главу с минимальным из интервалов в формате тиббл.
+
+```{r}
+as_tibble(posterior[which.min(posterior$interv), 1])
+```
+
+### 1.7
+
+Напишите короткий текст, комментирующий наблюдаемые сходства/различия между оценками среднего и доверительных интервалов количества употреблений слова “сэр” во всех главах романа. Что можно сказать про разные главы? Что можно сказать о сходстве/различиях фриквентистсткой и байесовской оценок наблюдаемых параметров?
+
+Самоя большая встречаемость - в главе 11 (0.28), самая маленькая - в главе 4 (0.0023777174).
+Grand mean (0.01203251) и среднее, посчитанное по бутстрэпу (0.01202626), практически не отличаюся. 
+Фриквентистская и байесовская оценки сошлись, максимальный интервал находится в главе 11, минимальный - в главе 4.
